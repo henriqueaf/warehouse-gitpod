@@ -1,18 +1,17 @@
 defmodule WarehouseGitpod do
   @moduledoc """
-  Documentation for WarehouseGitpod.
+  The Application main module, used to start the main
+  Supervisor module WarehouseGitpod.Supervisor.
   """
+  use Application
 
   @doc """
-  Hello world.
-
+  Executed when application starts. It starts the Supervisor module.
   ## Examples
-
-      iex> WarehouseGitpod.hello()
-      :world
-
+    iex> Application.start(:warehouse_gitpod)
+    {:error, {:already_started, :warehouse_gitpod}}
   """
-  def hello do
-    :world
+  def start(_type, _args) do
+    WarehouseGitpod.Supervisor.start_link()
   end
 end
