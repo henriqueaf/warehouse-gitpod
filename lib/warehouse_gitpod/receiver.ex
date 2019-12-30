@@ -2,18 +2,24 @@ defmodule WarehouseGitpod.Receiver do
   use GenServer
   alias WarehouseGitpod.{Deliverator}
 
+  @moduledoc """
+  Module responsible to receive packages and delegates
+  the delivery to Deliverators processes
+  """
+
+  # API Methods
+
   def start_link do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def init(_) do
-    state = %{
-      assignments: []
-    }
-    
-    {:ok, state}
-  end
-
+  @doc """
+  Method that chunck packages before send them to deliverators.
+  ## Examples
+    iex> packages = WarehouseGitpod.Package.random_batch(1)
+    iex> WarehouseGitpod.Receiver.receive_and_chunck(packages)
+    :ok
+  """
   def receive_and_chunck(packages) do
     packages
     |> Enum.chunk_every(10)
@@ -24,6 +30,18 @@ defmodule WarehouseGitpod.Receiver do
     GenServer.cast(__MODULE__, {:receive_packages, packages})
   end
 
+  # SERVER Methods
+
+  @impl true
+  def init(_) do
+    state = %{
+      assignments: []
+    }
+
+    {:ok, state}
+  end
+
+  @impl true
   def handle_cast({:receive_packages, packages}, state) do
     IO.puts "Received #{Enum.count(packages)} packages"
     {:ok, deliverator} = Deliverator.start
@@ -33,6 +51,7 @@ defmodule WarehouseGitpod.Receiver do
     {:noreply, state}
   end
 
+  @impl true
   def handle_info({:package_delivered, package}, state) do
     IO.puts "package #{inspect package} was delivered"
     delivered_assignments =
@@ -45,11 +64,13 @@ defmodule WarehouseGitpod.Receiver do
     {:noreply, new_state}
   end
 
+  @impl true
   def handle_info({:DOWN, _ref, :process, deliverator, :normal}, state) do
     IO.puts "deliverator #{inspect deliverator} completed the mission and terminated"
     {:noreply, state}
   end
 
+  @impl true
   def handle_info({:DOWN, _ref, :process, deliverator, reason}, state) do
     IO.puts "deliverator #{inspect deliverator} went down. Details: #{inspect reason}"
     failed_assignments = filter_assignments_by_deliverator(deliverator, state.assignments)

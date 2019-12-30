@@ -4,9 +4,8 @@ defmodule WarehouseGitpod.Deliverator do
 
   # Created init method to dismiss a warning saiyng
   # that init method is required by GenServer
-  def init(init_arg) do
-    {:ok, init_arg}
-  end
+
+  # API Methods
 
   def start do
     GenServer.start(__MODULE__, [])
@@ -14,6 +13,12 @@ defmodule WarehouseGitpod.Deliverator do
 
   def deliver_packages(pid, packages) do
     GenServer.cast(pid, {:deliver_packages, packages})
+  end
+
+  # SERVER Methods
+
+  def init(_init_args) do
+    {:ok, []}
   end
 
   def handle_cast({:deliver_packages, packages}, state) do
