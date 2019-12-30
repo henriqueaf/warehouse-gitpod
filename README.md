@@ -1,6 +1,9 @@
 # WarehouseGitpod
 
-**TODO: Add description**
+This project is an implementation of a study about Elixir's Fault tolerance
+using supervisors and process monitors to cover processes exiting.
+
+The base class for this implementation can be found on this youtube [video](https://www.youtube.com/watch?v=aBGQBsuUvhU).
 
 ## Installation
 
