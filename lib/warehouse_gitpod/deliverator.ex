@@ -1,6 +1,6 @@
 defmodule WarehouseGitpod.Deliverator do
   use GenServer
-#   alias WarehouseGitpod.{Receiver}
+  alias WarehouseGitpod.{Receiver}
 
   # Created init method to dismiss a warning saiyng
   # that init method is required by GenServer
@@ -25,17 +25,18 @@ defmodule WarehouseGitpod.Deliverator do
   defp deliver([package | remaining_packages]) do
     IO.puts "Deliverator #{inspect self()} delivering #{inspect package}"
     make_delivery()
+    send(Receiver, {:package_delivered, package})
     deliver(remaining_packages)
   end
 
   defp make_delivery do
-    :timer.sleep :rand.uniform(3_000)
+    :timer.sleep :rand.uniform(1_000)
     maybe_crash()
   end
 
   defp maybe_crash do
     crash_factor = :rand.uniform(100)
-    IO.puts "Crash facto: #{crash_factor}"
+    IO.puts "Crash factor: #{crash_factor}"
     if crash_factor > 60, do: raise "Oh no! Going down"
   end
 end
