@@ -17,8 +17,8 @@ defmodule WarehouseGitpod.Deliverator do
 
   # SERVER Methods
 
-  def init(_init_args) do
-    {:ok, []}
+  def init(init_args) do
+    {:ok, init_args}
   end
 
   def handle_cast({:deliver_packages, packages}, state) do
