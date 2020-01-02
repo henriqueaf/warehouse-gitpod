@@ -1,6 +1,7 @@
 defmodule WarehouseGitpod.Receiver do
   use GenServer
-  alias WarehouseGitpod.{Deliverator}
+  alias WarehouseGitpod.{Deliverator, DeliveratorPool}
+  @batch_size 20
 
   @moduledoc """
   Module responsible to receive packages and delegates
@@ -13,20 +14,7 @@ defmodule WarehouseGitpod.Receiver do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  @doc """
-  Method that chunck packages before send them to deliverators.
-  ## Examples
-    iex> packages = WarehouseGitpod.Package.random_batch(1)
-    iex> WarehouseGitpod.Receiver.receive_and_chunck(packages)
-    :ok
-  """
-  def receive_and_chunck(packages) do
-    packages
-    |> Enum.chunk_every(10)
-    |> Enum.each(&receive_packages/1)
-  end
-
-  defp receive_packages(packages) do
+  def receive_packages(packages) do
     GenServer.cast(__MODULE__, {:receive_packages, packages})
   end
 
@@ -35,7 +23,9 @@ defmodule WarehouseGitpod.Receiver do
   @impl true
   def init(_) do
     state = %{
-      assignments: []
+      assignments: [],
+      packages_buffer: [],
+      delivered_packages: []
     }
 
     {:ok, state}
@@ -44,11 +34,27 @@ defmodule WarehouseGitpod.Receiver do
   @impl true
   def handle_cast({:receive_packages, packages}, state) do
     IO.puts "Received #{Enum.count(packages)} packages"
-    {:ok, deliverator} = Deliverator.start
-    Process.monitor(deliverator)
-    state = assign_packages(state, packages, deliverator)
-    Deliverator.deliver_packages(deliverator, packages)
-    {:noreply, state}
+
+    new_state = case DeliveratorPool.available_deliverator do
+      {:ok, deliverator} ->
+        IO.puts "Deliverator #{inspect deliverator} acquired, assigning batch"
+        {package_batch, remaining_packages} = Enum.split(packages, @batch_size)
+        Process.monitor(deliverator)
+
+        DeliveratorPool.flag_deliverator_busy(deliverator)
+        Deliverator.deliver_packages(deliverator, package_batch)
+
+        if Enum.count(remaining_packages) > 0 do
+          receive_packages(remaining_packages)
+        end
+
+        assign_packages(state, package_batch, deliverator) # return new state with assigned packages
+      {:error, message} ->
+        IO.puts "#{message}"
+        IO.puts "buffering #{Enum.count(packages)} packages"
+    end
+
+    {:noreply, new_state}
   end
 
   @impl true
@@ -59,15 +65,24 @@ defmodule WarehouseGitpod.Receiver do
       |> Enum.filter(fn({assigned_package, _pid}) -> assigned_package == package end)
 
     assignments = state.assignments -- delivered_assignments
-    new_state = %{state | assignments: assignments}
+    delivered_packages = [package | state.delivered_packages]
+    new_state = %{state | assignments: assignments, delivered_packages: delivered_packages}
 
     {:noreply, new_state}
   end
 
   @impl true
-  def handle_info({:DOWN, _ref, :process, deliverator, :normal}, state) do
+  def handle_info({:deliverator_idle, deliverator}, state) do
     IO.puts "deliverator #{inspect deliverator} completed the mission and terminated"
-    {:noreply, state}
+    DeliveratorPool.flag_deliverator_idle(deliverator)
+    {next_batch, remaining_packages} = Enum.split(state.packages_buffer, @batch_size)
+
+    if Enum.count(next_batch) > 0 do
+      receive_packages(next_batch)
+    end
+
+    new_state = %{state | packages_buffer: remaining_packages}
+    {:noreply, new_state}
   end
 
   @impl true
@@ -76,6 +91,7 @@ defmodule WarehouseGitpod.Receiver do
     failed_assignments = filter_assignments_by_deliverator(deliverator, state.assignments)
     assignments = state.assignments -- failed_assignments
     new_state = %{state | assignments: assignments}
+    DeliveratorPool.remove_deliverator(deliverator)
 
     failed_packages = failed_assignments |> Enum.map(fn({package, _deliverator}) -> package end)
     receive_packages(failed_packages)

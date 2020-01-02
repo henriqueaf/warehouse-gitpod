@@ -10,7 +10,8 @@ defmodule WarehouseGitpod.Supervisor do
 
   def init(_) do
     children = [
-      worker(WarehouseGitpod.Receiver, [])
+      worker(WarehouseGitpod.Receiver, []),
+      worker(WarehouseGitpod.DeliveratorPool, [])
     ]
 
     supervise(children, strategy: :one_for_all)

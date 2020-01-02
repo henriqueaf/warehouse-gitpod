@@ -8,14 +8,14 @@ defmodule WarehouseGitpod.DeliveratorTest do
   end
 
   describe "deliver_packages(pid, packages)" do
-    test "creates a deliverator process to deliver the packages", %{packages: packages} do
-      {:ok, pid} = Deliverator.start()
-      Process.monitor(pid)
+    # test "creates a deliverator process to deliver the packages", %{packages: packages} do
+    #   {:ok, pid} = Deliverator.start()
+    #   Process.monitor(pid)
 
-      Deliverator.deliver_packages(pid, packages)
+    #   Deliverator.deliver_packages(pid, packages)
 
-      :timer.sleep 1_100
-      assert_received({:DOWN, _ref, :process, _pid, _reason})
-    end
+    #   :timer.sleep 1_100
+    #   assert_received({:DOWN, _ref, :process, _pid, _reason})
+    # end
   end
 end

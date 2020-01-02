@@ -8,15 +8,15 @@ defmodule WarehouseGitpod.ReceiverTest do
     {:ok, packages: Package.random_batch(1)}
   end
 
-  describe "receive_and_chunck(packages)" do
+  describe "#receive_packages(packages)" do
     test "save packages assignments into Receiver state before send them to deliverators", %{packages: packages} do
-      assert :ok = Receiver.receive_and_chunck(packages)
+      assert :ok = Receiver.receive_packages(packages)
       %{assignments: assignments} = :sys.get_state(Receiver)
       assert Enum.count(assignments) > 0
     end
 
     test "starts deliverator process to deliver the packages", %{packages: packages} do
-      Receiver.receive_and_chunck(packages)
+      Receiver.receive_packages(packages)
       %{assignments: assignments} = :sys.get_state(Receiver)
       Enum.each(assignments, fn({_package, deliverator}) -> assert Process.alive?(deliverator) end)
     end
